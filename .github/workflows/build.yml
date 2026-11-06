@@ -1,7 +1,5 @@
 name: Build IPA
 
-# Construit un .ipa NON SIGNÉ sur un Mac GitHub (gratuit) à chaque push,
-# ou manuellement via l'onglet "Actions" → "Run workflow".
 on:
   push:
   workflow_dispatch:
@@ -10,19 +8,20 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - name: Récupérer le code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Mettre project.yml avec le code
+        run: cp project.yml ios-app/project.yml
 
       - name: Installer XcodeGen
         run: brew install xcodegen
 
-      - name: Icône en 1024x1024 (sécurité)
-        run: sips -z 1024 1024 Resources/Assets.xcassets/AppIcon.appiconset/Icon-1024.png || true
-
-      - name: Générer le projet Xcode
+      - name: Generer le projet Xcode
+        working-directory: ios-app
         run: xcodegen generate
 
-      - name: Compiler (archive non signée)
+      - name: Compiler (archive non signee)
+        working-directory: ios-app
         run: |
           xcodebuild \
             -project MailCleaner.xcodeproj \
@@ -35,19 +34,15 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Emballer en .ipa non signé
+      - name: Emballer en .ipa
+        working-directory: ios-app
         run: |
-          APP="build/MailCleaner.xcarchive/Products/Applications/MailCleaner.app"
           mkdir -p out/Payload
-          cp -R "$APP" out/Payload/
-          cd out
-          zip -qr MailCleaner-unsigned.ipa Payload
-          rm -rf Payload
-          ls -lh
+          cp -R build/MailCleaner.xcarchive/Products/Applications/MailCleaner.app out/Payload/
+          cd out && zip -qr MailCleaner-unsigned.ipa Payload && rm -rf Payload && ls -lh
 
-      - name: Publier le .ipa
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: MailCleaner-ipa
-          path: out/MailCleaner-unsigned.ipa
+          path: ios-app/out/MailCleaner-unsigned.ipa
           if-no-files-found: error
