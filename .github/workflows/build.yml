@@ -1,5 +1,7 @@
 name: Build IPA
 
+# Construit un .ipa NON SIGNÉ sur un Mac GitHub à chaque push (ou via « Run workflow »).
+# En cas d'échec, chaque erreur du compilateur est publiée en annotation (lisible dans l'onglet Actions).
 on:
   push:
   workflow_dispatch:
@@ -10,18 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Mettre project.yml avec le code
-        run: cp project.yml ios-app/project.yml
-
       - name: Installer XcodeGen
         run: brew install xcodegen
 
       - name: Generer le projet Xcode
-        working-directory: ios-app
         run: xcodegen generate
 
       - name: Compiler (archive non signee)
-        working-directory: ios-app
         run: |
           xcodebuild \
             -project MailCleaner.xcodeproj \
@@ -32,10 +29,20 @@ jobs:
             archive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO > build.log 2>&1 || true
+          grep -E "error:|ARCHIVE (SUCCEEDED|FAILED)" build.log | sort -u | head -80 || true
+          if ! grep -q "ARCHIVE SUCCEEDED" build.log; then
+            grep -E "^/.*:[0-9]+:[0-9]+: error: " build.log | sort -u | head -40 | while IFS= read -r line; do
+              file=$(echo "$line" | cut -d: -f1 | sed "s#^$PWD/##")
+              ln=$(echo "$line" | cut -d: -f2)
+              msg=$(echo "$line" | sed -E 's#^[^:]+:[0-9]+:[0-9]+: error: ##')
+              echo "::error file=$file,line=$ln::$msg"
+            done
+            tail -30 build.log
+            exit 1
+          fi
 
       - name: Emballer en .ipa
-        working-directory: ios-app
         run: |
           mkdir -p out/Payload
           cp -R build/MailCleaner.xcarchive/Products/Applications/MailCleaner.app out/Payload/
@@ -44,5 +51,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: MailCleaner-ipa
-          path: ios-app/out/MailCleaner-unsigned.ipa
+          path: out/MailCleaner-unsigned.ipa
           if-no-files-found: error

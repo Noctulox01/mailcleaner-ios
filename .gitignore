@@ -1,0 +1,10 @@
+# Projet généré par XcodeGen (recréé avec `xcodegen generate`)
+*.xcodeproj/
+# Sorties de compilation
+build/
+out/
+DerivedData/
+*.ipa
+*.xcarchive
+.DS_Store
+xcuserdata/
