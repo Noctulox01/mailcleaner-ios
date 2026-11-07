@@ -1,12 +1,6 @@
 import Foundation
 
-/// Configuration de l'app. Pour changer de serveur, modifie `siteURL` ci-dessous.
 enum Config {
-    /// Page ouverte au lancement. On vise directement l'application (écran de connexion),
-    /// pas la page vitrine. Change l'URL ici si tu testes en local.
-    static let siteURL = URL(string: "https://mailcleaner.fr/app")!
-
-    /// Hôte "interne" : tout ce qui est sur ce domaine reste dans l'app.
-    /// Les liens vers d'autres domaines s'ouvrent dans Safari.
-    static let internalHost = "mailcleaner.fr"
+    static let siteURL = URL(string: "http://192.168.137.1:5002/app")!
+    static let internalHost = siteURL.host ?? ""
 }
