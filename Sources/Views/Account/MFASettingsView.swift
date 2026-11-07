@@ -242,31 +242,10 @@ struct MFASetupSheet: View {
 
     @ViewBuilder
     private func totpContent(_ t: TOTPSetup) -> some View {
+        // Sur iPhone, un lien otpauth:// est souvent pris par l'app « Mots de passe » d'iOS et non par
+        // Google Authenticator : la méthode fiable est de copier la clé et de la coller dans l'application.
         VStack(alignment: .leading, spacing: 10) {
-            Text("1. Ajoutez MailCleaner à votre application").font(.subheadline.weight(.semibold))
-            Text("Sur cet iPhone, touchez le bouton ci-dessous. Sur un autre appareil, scannez le QR code.")
-                .font(.footnote).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-
-        if let url = URL(string: t.uri) {
-            Button {
-                openURL(url) { accepted in
-                    if !accepted { error = "Aucune application d'authentification installée. Installez-en une (ex. Google Authenticator) ou copiez la clé." }
-                }
-            } label: {
-                Label("Ouvrir dans mon application d'authentification", systemImage: "arrow.up.forward.app.fill")
-                    .frame(maxWidth: .infinity, minHeight: 46)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: 14))
-        }
-
-        QRCodeView(text: t.uri, size: 230)
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
-
-        VStack(alignment: .leading, spacing: 8) {
-            Text("2. Ou saisissez cette clé à la main").font(.subheadline.weight(.semibold))
+            Text("1. Copiez la clé").font(.subheadline.weight(.semibold))
             HStack {
                 Text(grouped(t.secret))
                     .font(.system(.callout, design: .monospaced).weight(.semibold))
@@ -274,19 +253,58 @@ struct MFASetupSheet: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
                 Spacer()
-                Button {
-                    UIPasteboard.general.string = t.secret
-                    copied = true
-                } label: {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                }
-                .accessibilityLabel("Copier la clé")
             }
             .padding(12)
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Button {
+                UIPasteboard.general.string = t.secret
+                copied = true
+            } label: {
+                Label(copied ? "Clé copiée" : "Copier la clé", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    .frame(maxWidth: .infinity, minHeight: 46)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.roundedRectangle(radius: 14))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+
+        VStack(alignment: .leading, spacing: 6) {
+            Text("2. Ajoutez-la dans Google Authenticator").font(.subheadline.weight(.semibold))
+            Text("Touchez « + », puis « Saisir une clé de configuration ». Nom : MailCleaner. Collez la clé. Type : « Basé sur l'heure ». Validez.")
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Vous aviez déjà ajouté MailCleaner ? Supprimez l'ancienne entrée : seule celle-ci est valable.")
+                .font(.footnote)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        DisclosureGroup("Autres méthodes : QR code, ajout direct") {
+            VStack(spacing: 14) {
+                Text("Pour scanner avec un autre téléphone ou une tablette :")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                QRCodeView(text: t.uri, size: 210)
+                if let url = URL(string: t.uri) {
+                    Button {
+                        openURL(url) { accepted in
+                            if !accepted { error = "Aucune application d'authentification ne s'est ouverte : utilisez « Copier la clé »." }
+                        }
+                    } label: {
+                        Label("Ajouter sur cet iPhone en un geste", systemImage: "arrow.up.forward.app")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    Text("Ouvre l'application d'authentification par défaut d'iOS (souvent « Mots de passe »), pas forcément Google Authenticator.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 8)
+        }
+        .font(.subheadline)
     }
 
     private func grouped(_ s: String) -> String {
